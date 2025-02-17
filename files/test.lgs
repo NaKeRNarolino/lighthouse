@@ -1,0 +1,1 @@
+let variable: integer = 32 * ( 10 / 2 );
