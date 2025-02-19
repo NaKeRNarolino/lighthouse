@@ -1,5 +1,6 @@
 export enum TokenType {
   VarDec,
+  FuncDec,
   Identifier,
 
   DataTypeDec,
@@ -20,7 +21,8 @@ export enum TokenType {
 }
 
 const Keywords: Record<string, TokenType> =  {
-  "let": TokenType.VarDec
+  "let": TokenType.VarDec,
+  "func": TokenType.FuncDec
 };
 
 export interface Token {
@@ -103,18 +105,10 @@ export function tokenize(input: string): Token[] {
           }
           else {
               console.log('Unknown character: ', src[0]);
-              Deno.exit(1);
           }
       }
   }
 
   tokens.push({type: TokenType.EOF, value: "EndOfFile"});
   return tokens;
-}
-
-
-const source = await Deno.readTextFile("../files/test.lgs");
-
-for(const token of tokenize(source)) {
-  console.log(token);
 }
