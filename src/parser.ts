@@ -1,5 +1,6 @@
-import { State, Program, Expr, BinExpr, NumericLiteral, Identifier } from "./ast.ts";
+import { State, Program, Expr, BinExpr, NumericLiteral, Identifier, Null } from "./ast.ts";
 import { tokenize, Token, TokenType } from "./lexer.ts";
+
 
 export default class Parser {
     private tokens: Token[] = [];
@@ -14,6 +15,15 @@ export default class Parser {
 
     private eat() {
         const prev = this.tokens.shift() as Token;
+
+        return prev;
+    }
+
+    private expect(type: TokenType, message: any) {
+        const prev = this.tokens.shift() as Token;
+        if(!prev || prev.type != type) {
+            console.error("Parser error:\n", message, prev);
+        }
 
         return prev;
     }
@@ -43,9 +53,26 @@ export default class Parser {
     }
 
     private parseAddExpr(): Expr {
-        let left = this.parsePrimExpr();
+        let left = this.parseMultExpr();
 
         while(this.atToken().value == "+" || this.atToken().value == "-") {
+            const operator = this.eat().value;
+            const right = this.parseMultExpr();
+            left = {
+                kind: "BinExpr",
+                left, 
+                right, 
+                operator
+            } as BinExpr;
+        }
+
+        return left;
+    }
+
+    private parseMultExpr(): Expr {
+        let left = this.parsePrimExpr();
+
+        while(this.atToken().value == "*" || this.atToken().value == "/") {
             const operator = this.eat().value;
             const right = this.parsePrimExpr();
             left = {
@@ -65,12 +92,19 @@ export default class Parser {
         switch(token) {
             case TokenType.Identifier:
                 return { kind: "Identifier", symbol: this.eat().value } as Identifier;
+            case TokenType.Null:
+                this.eat();
+                return { kind: "Null", value: "null"} as Null;
             case TokenType.Number:
                 return { kind: "NumericLiteral", value: parseFloat(this.eat().value) } as NumericLiteral;
-            
+            case TokenType.OpenPar: 
+                this.eat();
+                const value = this.parseExpr();
+                this.expect(TokenType.ClosePar, "')' expected.");
+                return value;
+
             default:
                 console.error("Unexpected token: ", this.atToken());
-
                 return {} as State;
         }
     }

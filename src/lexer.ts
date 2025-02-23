@@ -9,6 +9,7 @@ export enum TokenType {
   Equals,
 
   Number,
+  Null,
 
   OpenPar,
   ClosePar,
@@ -21,8 +22,9 @@ export enum TokenType {
 }
 
 const Keywords: Record<string, TokenType> =  {
-  "let": TokenType.VarDec,
-  "func": TokenType.FuncDec
+  let: TokenType.VarDec,
+  func: TokenType.FuncDec,
+  null: TokenType.Null
 };
 
 export interface Token {
@@ -93,11 +95,11 @@ export function tokenize(input: string): Token[] {
               }
 
               const reserved = Keywords[identifier];
-              if(reserved == undefined) {
-                  tokens.push(toToken(identifier, TokenType.Identifier));
+              if(typeof reserved == "number") {
+                  tokens.push(toToken(identifier, reserved));
               }
               else {
-                  tokens.push(toToken(identifier, reserved));
+                  tokens.push(toToken(identifier, TokenType.Identifier));
               }
           }
           else if(isEmpty(src[0])) {

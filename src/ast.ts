@@ -3,6 +3,7 @@ export type NodeType =
   | "NumericLiteral"
   | "Identifier"
   | "BinExpr"
+  | "Null"
 
 
 export interface State {
@@ -31,4 +32,9 @@ export interface Identifier extends Expr {
 export interface NumericLiteral extends Expr {
     kind: "NumericLiteral";
     value: number;
+}
+
+export interface Null extends Expr {
+    kind: "Null";
+    value: "null";
 }
