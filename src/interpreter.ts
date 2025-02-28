@@ -1,12 +1,13 @@
-import { RuntimeValue, NumberValue, NullValue } from "./values.ts";
-import { BinExpr, NumericLiteral, Program, State } from "./ast.ts";
+import { RuntimeValue, NumberValue, MakeNull, MakeNumber } from "./values.ts";
+import { BinExpr, Identifier, NumericLiteral, Program, State } from "./ast.ts";
+import Environment from "./environment.ts";
 
 
-function evaluateProgram(program: Program): RuntimeValue {
-    let lastEval: RuntimeValue = { type: "null", value: "null" } as NullValue;
+function evaluateProgram(program: Program, env: Environment): RuntimeValue {
+    let lastEval: RuntimeValue = MakeNull();
 
     for(const state of program.body) {
-        lastEval = evaluate(state);
+        lastEval = evaluate(state, env);
     }
 
     return lastEval;
@@ -31,30 +32,34 @@ function evaluateNumBinExpr(lp: NumberValue, rp: NumberValue, op: string): Numbe
     return { value: result, type: "number" };
 }
 
-function evaluateBinExpr(binOp: BinExpr): RuntimeValue {
-    const leftPart = evaluate(binOp.left);
-    const rightPart = evaluate(binOp.right);
+function evaluateBinExpr(binOp: BinExpr, env: Environment): RuntimeValue {
+    const leftPart = evaluate(binOp.left, env);
+    const rightPart = evaluate(binOp.right, env);
 
     if(leftPart.type == "number" && rightPart.type == "number") {
         return evaluateNumBinExpr(leftPart as NumberValue, rightPart as NumberValue, binOp.operator);
     }
 
-    return { type: "null", value: "null" } as NullValue;
+    return MakeNull();
 }
 
+function evaluateIdentifier(id: Identifier, env: Environment): RuntimeValue {
+    const val = env.lookUpVar(id.symbol);
+    return val;
+}
 
-export function evaluate(astNode: State): RuntimeValue {
+export function evaluate(astNode: State, env: Environment): RuntimeValue {
     switch (astNode.kind) {
         case "NumericLiteral":
             return { value: ((astNode as NumericLiteral).value), type: "number" } as NumberValue;
-        case "Null":
-            return { value: "null", type: "null" } as NullValue;
+        case "Identifier": 
+            return evaluateIdentifier(astNode as Identifier, env);
         case "BinExpr":
-            return evaluateBinExpr(astNode as BinExpr);   
+            return evaluateBinExpr(astNode as BinExpr, env);   
         case "Program":
-            return evaluateProgram(astNode as Program);
+            return evaluateProgram(astNode as Program, env);
 
         default:
-            console.error("Hui", astNode)
+            console.error("Hui", astNode);
     }
 }

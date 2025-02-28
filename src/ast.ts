@@ -1,9 +1,10 @@
 export type NodeType =
   | "Program"
+  | "VarDeclaration"
+
   | "NumericLiteral"
   | "Identifier"
   | "BinExpr"
-  | "Null"
 
 
 export interface State {
@@ -13,6 +14,13 @@ export interface State {
 export interface Program extends State {
     kind: "Program";
     body: State[];
+}
+
+export interface VarDeclaration extends State {
+    kind: "VarDeclaration";
+    constant: boolean;
+    identifier: string;
+    value?: Expr;
 }
 
 export interface Expr extends State { }
@@ -32,9 +40,4 @@ export interface Identifier extends Expr {
 export interface NumericLiteral extends Expr {
     kind: "NumericLiteral";
     value: number;
-}
-
-export interface Null extends Expr {
-    kind: "Null";
-    value: "null";
 }

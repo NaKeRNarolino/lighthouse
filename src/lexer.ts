@@ -1,5 +1,7 @@
 export enum TokenType {
-  VarDec,
+  Let,
+  Const,
+
   FuncDec,
   Identifier,
 
@@ -9,7 +11,6 @@ export enum TokenType {
   Equals,
 
   Number,
-  Null,
 
   OpenPar,
   ClosePar,
@@ -22,9 +23,9 @@ export enum TokenType {
 }
 
 const Keywords: Record<string, TokenType> =  {
-  let: TokenType.VarDec,
-  func: TokenType.FuncDec,
-  null: TokenType.Null
+  let: TokenType.Let,
+  const: TokenType.Const,
+  func: TokenType.FuncDec
 };
 
 export interface Token {
