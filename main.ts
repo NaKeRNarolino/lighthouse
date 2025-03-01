@@ -14,7 +14,7 @@ function repl() {
     env.varDec("false", MakeBool(false));
     env.varDec("null", MakeNull());
 
-    console.log("\nRepl v0.1");
+    console.log("\nLighthouse v0.1");
 
     while(true) {
         const input = prompt("> ");

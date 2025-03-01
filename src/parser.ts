@@ -1,4 +1,4 @@
-import { State, Program, Expr, BinExpr, NumericLiteral, Identifier } from "./ast.ts";
+import { State, Program, Expr, BinExpr, NumericLiteral, Identifier, VarDeclaration } from "./ast.ts";
 import { tokenize, Token, TokenType } from "./lexer.ts";
 
 
@@ -45,7 +45,46 @@ export default class Parser {
     }
 
     private parseState(): State {
-        return this.parseExpr();
+        switch(this.atToken().type) {
+            case TokenType.Let:
+            case TokenType.Const:
+                return this.parseVarDec();
+
+            default:
+                return this.parseExpr();
+        }
+    }
+
+    private parseVarDec(): State {
+        const isConstant = this.eat().type == TokenType.Const;
+        const id = this.expect(TokenType.Identifier, "Expected identifier name").value;
+
+        if(this.atToken().type == TokenType.EndLine) {
+            this.eat();
+
+            if(isConstant) {
+                throw "Must assign value";
+            }
+
+            return { 
+                kind: "VarDeclaration", 
+                identifier: id, 
+                constant: false, 
+            } as VarDeclaration;
+        }
+
+        this.expect(TokenType.Equals, "Expected '=' operator");
+
+        const declaration = {
+            kind: "VarDeclaration",
+            value: this.parseExpr(), 
+            identifier: id,
+            constant: isConstant,
+        } as VarDeclaration;
+
+        this.expect(TokenType.EndLine, "Expected semicolon");
+
+        return declaration;
     }
     
     private parseExpr(): Expr {
