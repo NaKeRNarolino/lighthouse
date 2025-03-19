@@ -81,7 +81,7 @@ const ComposedOperators: Record<string, Token> = ((operators: string[]) => {
   }
 
   return result;
-})(["+=", "-=", "/=", "*="]);
+})(["+=", "-=", "/=", "*=", "%="]);
 
 function toOperator(operator: string): Token {
   return {

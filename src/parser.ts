@@ -140,9 +140,26 @@ export default class Parser {
   }
 
   private parseMultExpr(): Expr {
-    let left = this.parsePrimExpr();
+    let left = this.parseModExpr();
 
     while (this.atToken().value == "*" || this.atToken().value == "/") {
+      const operator = this.eat().value;
+      const right = this.parseModExpr();
+      left = {
+        kind: "BinExpr",
+        left,
+        right,
+        operator,
+      } as BinExpr;
+    }
+
+    return left;
+  }
+
+  private parseModExpr(): Expr {
+    let left = this.parsePrimExpr();
+
+    while (this.atToken().value == "%") {
       const operator = this.eat().value;
       const right = this.parsePrimExpr();
       left = {
@@ -164,9 +181,9 @@ export default class Parser {
         const tryGetAssignment = TokenUtils.isValueAny(
           this.peek(),
           TokenType.Operator,
-          ["=", "+=", "-=", "/=", "*="]
+          ["=", "+=", "-=", "/=", "*=", "%="]
         );
-        console.log(JSON.stringify(tryGetAssignment));
+        // console.log(JSON.stringify(tryGetAssignment));
         if (tryGetAssignment[0]) {
           return this.parseVarAssignment(tryGetAssignment[1]!);
         }
@@ -242,6 +259,16 @@ export default class Parser {
             } satisfies Identifier as Expr,
             right: expr,
             operator: "*",
+          } satisfies BinExpr;
+        } else if (mode == "%=") {
+          return {
+            kind: "BinExpr",
+            left: {
+              kind: "Identifier",
+              symbol: ident.value,
+            } satisfies Identifier as Expr,
+            right: expr,
+            operator: "%",
           } satisfies BinExpr;
         }
         return { kind: "NullExpr" } satisfies NullExpr;

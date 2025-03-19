@@ -19,6 +19,8 @@ function evaluateNumBinExpr(
     result = lp.value * rp.value;
   } else if (op == "/") {
     result = lp.value / rp.value;
+  } else if (op == "%") {
+    result = lp.value % rp.value;
   }
 
   return { value: result, type: "number" };
