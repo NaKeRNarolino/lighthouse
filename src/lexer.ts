@@ -1,8 +1,6 @@
 export enum TokenType {
-  Let,
-  Const,
+  Keyword,
 
-  FuncDec,
   Identifier,
 
   DataTypeDec,
@@ -20,13 +18,25 @@ export enum TokenType {
   EndLine,
 
   EOF,
+  Skip,
 }
 
-const Keywords: Record<string, TokenType> = {
-  let: TokenType.Let,
-  const: TokenType.Const,
-  func: TokenType.FuncDec,
-};
+function toKeyword(kw: string): Token {
+  return {
+    value: kw,
+    type: TokenType.Keyword,
+  };
+}
+
+const Keywords: Record<string, Token> = ((keywords: string[]) => {
+  const result: Record<string, Token> = {};
+
+  for (const kw of keywords) {
+    result[kw] = toKeyword(kw);
+  }
+
+  return result;
+})(["let", "const", "func"]);
 
 export interface Token {
   value: string;
@@ -36,6 +46,20 @@ export interface Token {
 export class TokenUtils {
   static is(token: Token, type: TokenType, value: string): boolean {
     return token.type == type && token.value == value;
+  }
+
+  static isValueAny(
+    token: Token,
+    type: TokenType,
+    values: string[]
+  ): [boolean, string | null] {
+    // console.log(token.value);
+    if (token.type == type) {
+      if (values.includes(token.value)) {
+        return [true, token.value];
+      }
+    }
+    return [false, null];
   }
 }
 
@@ -48,6 +72,16 @@ const Operators: Record<string, Token> = ((operators: string[]) => {
 
   return result;
 })(["+", "-", "/", "*", "%", "="]);
+
+const ComposedOperators: Record<string, Token> = ((operators: string[]) => {
+  const result: Record<string, Token> = {};
+
+  for (const op of operators) {
+    result[op] = toOperator(op);
+  }
+
+  return result;
+})(["+=", "-=", "/=", "*="]);
 
 function toOperator(operator: string): Token {
   return {
@@ -85,6 +119,16 @@ export function tokenize(input: string): Token[] {
     } else if (src[0] == ")") {
       tokens.push(toToken(src.shift(), TokenType.ClosePar));
     } else if (Operators[src[0]] != undefined) {
+      if (tokens[tokens.length - 1]?.type != TokenType.Skip) {
+        const composed = tokens[tokens.length - 1].value + src[0];
+
+        if (ComposedOperators[composed] != undefined) {
+          tokens.pop();
+          tokens.push(ComposedOperators[composed]);
+          src.shift();
+          continue;
+        }
+      }
       tokens.push(Operators[src.shift()!]);
     } else if (src[0] == ":") {
       tokens.push(toToken(src.shift(), TokenType.DataTypeDec));
@@ -109,12 +153,16 @@ export function tokenize(input: string): Token[] {
         }
 
         const reserved = Keywords[identifier];
-        if (typeof reserved == "number") {
-          tokens.push(toToken(identifier, reserved));
+        if (reserved != undefined) {
+          tokens.push(reserved);
         } else {
           tokens.push(toToken(identifier, TokenType.Identifier));
         }
       } else if (isEmpty(src[0])) {
+        tokens.push({
+          type: TokenType.Skip,
+          value: "",
+        });
         src.shift();
       } else {
         console.log("Unknown character: ", src[0]);
@@ -123,5 +171,9 @@ export function tokenize(input: string): Token[] {
   }
 
   tokens.push({ type: TokenType.EOF, value: "EndOfFile" });
-  return tokens;
+
+  // console.log(tokens);
+  return tokens.filter((v) => {
+    return v.type != TokenType.Skip;
+  });
 }

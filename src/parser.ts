@@ -7,6 +7,7 @@ import {
   Identifier,
   NumericLiteral,
   VarAssignment,
+  NullExpr,
 } from "@lhs/ast";
 import { Token, TokenType, tokenize, TokenUtils } from "@lhs/lexer";
 
@@ -67,30 +68,33 @@ export default class Parser {
 
   private parseState(): State {
     switch (this.atToken().type) {
-      case TokenType.Let:
-      case TokenType.Const:
-        return this.parseVarDec();
+      case TokenType.Keyword: {
+        if (this.atToken().value == "let" || this.atToken().value == "const") {
+          return this.parseVarDec();
+        }
+        return { kind: "NullExpr" } satisfies NullExpr;
+      }
       case TokenType.EndLine:
         return {
           kind: "NullExpr",
-        };
+        } satisfies NullExpr;
       default:
         return this.parseExpr();
     }
   }
 
   private parseVarDec(): State {
-    const isConstant = this.eat().type == TokenType.Const;
+    const isConstant = this.eat().value == "const";
     const id = this.expect(
       TokenType.Identifier,
-      "Expected identifier name"
+      "Expected an identifier as a name"
     ).value;
 
     if (this.atToken().type == TokenType.EndLine) {
       this.eat();
 
       if (isConstant) {
-        throw "Must assign value";
+        throw "Must assign a value";
       }
 
       return {
@@ -109,7 +113,7 @@ export default class Parser {
       constant: isConstant,
     } as VarDeclaration;
 
-    this.expect(TokenType.EndLine, "Expected semicolon");
+    this.expect(TokenType.EndLine, "Expected a semicolon");
 
     return declaration;
   }
@@ -156,11 +160,19 @@ export default class Parser {
     const token = this.atToken().type;
 
     switch (token) {
-      case TokenType.Identifier:
-        if (TokenUtils.is(this.peek(), TokenType.Operator, "=")) {
-          return this.parseVarAssignment();
+      case TokenType.Identifier: {
+        const tryGetAssignment = TokenUtils.isValueAny(
+          this.peek(),
+          TokenType.Operator,
+          ["=", "+=", "-=", "/=", "*="]
+        );
+        console.log(JSON.stringify(tryGetAssignment));
+        if (tryGetAssignment[0]) {
+          return this.parseVarAssignment(tryGetAssignment[1]!);
         }
+
         return { kind: "Identifier", symbol: this.eat().value } as Identifier;
+      }
       case TokenType.Number:
         return {
           kind: "NumericLiteral",
@@ -175,23 +187,69 @@ export default class Parser {
 
       default:
         console.error("Unexpected token: ", this.atToken());
-        return {} as State;
+        Deno.exit();
+      // return {} as State;
     }
   }
 
-  private parseVarAssignment(): Expr {
+  private parseVarAssignment(mode: string): Expr {
     const ident = this.eat();
-    this.eat(); // `=`
+    this.eat(); // `=` | `+=` | `-=` | `/=` | `*=`
 
     const expr = this.parseExpr();
 
     const v: VarAssignment = {
       ident: ident.value,
-      value: expr,
+      value: (() => {
+        if (mode == "=") {
+          return expr;
+        } else if (mode == "+=") {
+          return {
+            kind: "BinExpr",
+            left: {
+              kind: "Identifier",
+              symbol: ident.value,
+            } satisfies Identifier as Expr,
+            right: expr,
+            operator: "+",
+          } satisfies BinExpr;
+        } else if (mode == "-=") {
+          return {
+            kind: "BinExpr",
+            left: {
+              kind: "Identifier",
+              symbol: ident.value,
+            } satisfies Identifier as Expr,
+            right: expr,
+            operator: "-",
+          } satisfies BinExpr;
+        } else if (mode == "/=") {
+          return {
+            kind: "BinExpr",
+            left: {
+              kind: "Identifier",
+              symbol: ident.value,
+            } satisfies Identifier as Expr,
+            right: expr,
+            operator: "/",
+          } satisfies BinExpr;
+        } else if (mode == "*=") {
+          return {
+            kind: "BinExpr",
+            left: {
+              kind: "Identifier",
+              symbol: ident.value,
+            } satisfies Identifier as Expr,
+            right: expr,
+            operator: "*",
+          } satisfies BinExpr;
+        }
+        return { kind: "NullExpr" } satisfies NullExpr;
+      })(),
       kind: "VarAssignment",
     };
 
-    this.expect(TokenType.EndLine, "Expected semicolon");
+    this.expect(TokenType.EndLine, "Expected a semicolon");
 
     return v;
   }
