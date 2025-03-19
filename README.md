@@ -1,1 +1,1 @@
-Lighthouse is a TypeScript-based scripting language
+Lighthouse is an interpreted scripting programming language, built in TypeScript with Deno
