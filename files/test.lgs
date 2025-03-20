@@ -1,1 +1,1 @@
-let variable: integer = 32 * ( 10 / 2 );
+let variable = 32 * ( 100 / 25 );

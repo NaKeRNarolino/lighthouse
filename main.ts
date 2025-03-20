@@ -1,26 +1,21 @@
-import Parser from "./src/parser.ts";
-import { evaluate } from "./src/interpreter.ts";
-import Environment from "./src/environment.ts";
-import { MakeNull, MakeNumber, MakeBool } from "./src/values.ts";
+import Parser from "@lhs/parser";
+import { evaluate } from "@lhs/interpreter";
+import Environment from "@lhs/environment";
+import { ValueMaker } from "@lhs/value-maker";
 
 repl();
 
-function repl() {
+async function repl() {
   const parser = new Parser();
   const env = new Environment();
-  env.varDec("myVar", MakeNumber(100));
-  env.varDec("true", MakeBool(true));
-  env.varDec("false", MakeBool(false));
-  env.varDec("null", MakeNull());
+  env.varDec("true", ValueMaker.makeBool(true), false);
+  env.varDec("false", ValueMaker.makeBool(false), false);
+  env.varDec("null", ValueMaker.makeNull(), false);
 
-  console.log("\nLighthouse v0.1");
+  console.log("\nLighthouse v0.1\n");
 
   while (true) {
-    const input = prompt("> ");
-
-    if (!input || input?.includes("exit")) {
-      return;
-    }
+    const input = await Deno.readTextFile("./files/test.lgs");
 
     const program = parser.produceAST(input);
 
@@ -28,5 +23,6 @@ function repl() {
     console.log(result);
 
     console.log("_______________________________________\n");
+    Deno.exit(1);
   }
 }
