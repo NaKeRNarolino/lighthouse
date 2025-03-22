@@ -5,7 +5,8 @@ export type NodeType =
   | "NumericLiteral"
   | "Identifier"
   | "BinExpr"
-  | "NullExpr";
+  | "NullExpr"
+  | "StringLiteral";
 
 export interface State {
   kind: NodeType;
@@ -51,4 +52,9 @@ export interface VarAssignment extends Expr {
 
 export interface NullExpr extends Expr {
   kind: "NullExpr";
+}
+
+export interface StringLiteral extends Expr {
+  kind: "StringLiteral";
+  value: string;
 }

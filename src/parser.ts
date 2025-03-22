@@ -8,6 +8,7 @@ import {
   NumericLiteral,
   VarAssignment,
   NullExpr,
+  StringLiteral,
 } from "@lhs/ast";
 import { Token, TokenType, tokenize, TokenUtils } from "@lhs/lexer";
 
@@ -195,6 +196,11 @@ export default class Parser {
           kind: "NumericLiteral",
           value: parseFloat(this.eat().value),
         } as NumericLiteral;
+      case TokenType.String:
+        return {
+          kind: "StringLiteral",
+          value: this.eat().value,
+        } as StringLiteral;
       case TokenType.OpenPar: {
         this.eat();
         const value = this.parseExpr();

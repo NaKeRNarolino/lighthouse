@@ -1,14 +1,14 @@
 import { BinExpr, Identifier } from "@lhs/ast";
 import Environment from "@lhs/environment";
 import { evaluate } from "@lhs/interpreter";
-import { RuntimeValue, NumberValue } from "@lhs/runtime-values";
+import { RuntimeValue, NumberRuntimeValue } from "@lhs/runtime-values";
 import { ValueMaker } from "@lhs/value-maker";
 
 function evaluateNumBinExpr(
-  lp: NumberValue,
-  rp: NumberValue,
+  lp: NumberRuntimeValue,
+  rp: NumberRuntimeValue,
   op: string
-): NumberValue {
+): NumberRuntimeValue {
   let result: number = 0;
 
   if (op == "+") {
@@ -23,20 +23,23 @@ function evaluateNumBinExpr(
     result = lp.value % rp.value;
   }
 
-  return { value: result, type: "number" };
+  return new NumberRuntimeValue(result);
 }
 
 export function evaluateBinExpr(
   binOp: BinExpr,
   env: Environment
-): RuntimeValue {
+): RuntimeValue<unknown> {
   const leftPart = evaluate(binOp.left, env);
   const rightPart = evaluate(binOp.right, env);
 
-  if (leftPart.type == "number" && rightPart.type == "number") {
+  if (
+    leftPart instanceof NumberRuntimeValue &&
+    rightPart instanceof NumberRuntimeValue
+  ) {
     return evaluateNumBinExpr(
-      leftPart as NumberValue,
-      rightPart as NumberValue,
+      leftPart as NumberRuntimeValue,
+      rightPart as NumberRuntimeValue,
       binOp.operator
     );
   }
@@ -47,7 +50,7 @@ export function evaluateBinExpr(
 export function evaluateIdentifier(
   id: Identifier,
   env: Environment
-): RuntimeValue {
+): RuntimeValue<unknown> {
   const val = env.lookUpVar(id.symbol);
   return val;
 }

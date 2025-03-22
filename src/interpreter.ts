@@ -1,10 +1,15 @@
-import { RuntimeValue, NumberValue } from "@lhs/runtime-values";
+import {
+  RuntimeValue,
+  NumberRuntimeValue,
+  StringRuntimeValue,
+} from "@lhs/runtime-values";
 import {
   BinExpr,
   Identifier,
   NumericLiteral,
   Program,
   State,
+  StringLiteral,
   VarAssignment,
   VarDeclaration,
 } from "@lhs/ast";
@@ -17,13 +22,15 @@ import {
 } from "@lhs/eval/stmt";
 import { ValueMaker } from "@lhs/value-maker";
 
-export function evaluate(astNode: State, env: Environment): RuntimeValue {
+export function evaluate(
+  astNode: State,
+  env: Environment
+): RuntimeValue<unknown> {
   switch (astNode.kind) {
     case "NumericLiteral":
-      return {
-        value: (astNode as NumericLiteral).value,
-        type: "number",
-      } as NumberValue;
+      return new NumberRuntimeValue((astNode as NumericLiteral).value);
+    case "StringLiteral":
+      return new StringRuntimeValue((astNode as StringLiteral).value);
     case "Identifier":
       return evaluateIdentifier(astNode as Identifier, env);
     case "BinExpr":
