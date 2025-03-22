@@ -2,7 +2,7 @@ import { RuntimeValue } from "@lhs/runtime-values";
 
 export default class Environment {
   private parent?: Environment;
-  private variables: Map<string, RuntimeValue>;
+  private variables: Map<string, RuntimeValue<unknown>>;
   private constants: Set<string>;
 
   constructor(parentEnv?: Environment) {
@@ -13,9 +13,9 @@ export default class Environment {
 
   public varDec(
     varName: string,
-    value: RuntimeValue,
+    value: RuntimeValue<unknown>,
     constant: boolean
-  ): RuntimeValue {
+  ): RuntimeValue<unknown> {
     if (this.variables.has(varName)) {
       throw `Variable declaration failed ${varName}. It already exists.`;
     }
@@ -29,7 +29,10 @@ export default class Environment {
     return value;
   }
 
-  public varAssign(varName: string, value: RuntimeValue): RuntimeValue {
+  public varAssign(
+    varName: string,
+    value: RuntimeValue<unknown>
+  ): RuntimeValue<unknown> {
     const env = this.resolveVariable(varName);
 
     if (env.constants.has(varName)) {
@@ -40,9 +43,9 @@ export default class Environment {
     return value;
   }
 
-  public lookUpVar(varName: string): RuntimeValue {
+  public lookUpVar(varName: string): RuntimeValue<unknown> {
     const env = this.resolveVariable(varName);
-    return env.variables.get(varName) as RuntimeValue;
+    return env.variables.get(varName) as RuntimeValue<unknown>;
   }
 
   /**

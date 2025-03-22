@@ -1,15 +1,24 @@
-import { BoolValue, NullValue, NumberValue } from "@lhs/runtime-values";
+import {
+  BooleanRuntimeValue,
+  NullRuntimeValue,
+  NumberRuntimeValue,
+  StringRuntimeValue,
+} from "@lhs/runtime-values";
 
 export class ValueMaker {
-  static makeNull(): NullValue {
-    return { type: "null", value: null };
+  static makeNull(): NullRuntimeValue {
+    return new NullRuntimeValue();
   }
 
-  static makeNumber(num = 0): NumberValue {
-    return { type: "number", value: num };
+  static makeNumber(num = 0): NumberRuntimeValue {
+    return new NumberRuntimeValue(num);
   }
 
-  static makeBool(b = true): BoolValue {
-    return { type: "boolean", value: b };
+  static makeBool(b = true): BooleanRuntimeValue {
+    return new BooleanRuntimeValue(b);
+  }
+
+  static makeString(str = ""): StringRuntimeValue {
+    return new StringRuntimeValue(str);
   }
 }
