@@ -21,6 +21,7 @@ export interface VarDeclaration extends State {
   constant: boolean;
   identifier: string;
   value?: Expr;
+  dataType?: "string" | "integer" | "float";
 }
 
 export interface Expr extends State {}
