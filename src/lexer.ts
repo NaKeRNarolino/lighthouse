@@ -1,22 +1,15 @@
 export enum TokenType {
   Keyword,
-
+  String,
   Identifier,
-
   DataTypeDec,
   DataType,
-
   Equals,
-
   Number,
-
   OpenPar,
   ClosePar,
-
   Operator,
-
   EndLine,
-
   EOF,
   Skip,
 }
@@ -99,7 +92,7 @@ function isAlpha(src: string) {
 }
 
 function isEmpty(str: string) {
-  return str == " " || str == "\n" || str == "\t";
+  return str == " " || str == "\n" || str == "\t" || str == "\r";
 }
 
 function isInt(str: string) {
@@ -113,7 +106,19 @@ export function tokenize(input: string): Token[] {
   const tokens = new Array<Token>();
   const src = input.split("");
 
+  let isMakingString = false;
+  let stringMakingProcess = "";
+
   while (src.length > 0) {
+    if (isEmpty(src[0])) {
+      tokens.push({
+        type: TokenType.Skip,
+        value: "",
+      });
+      src.shift();
+      continue;
+    }
+
     if (src[0] == "(") {
       tokens.push(toToken(src.shift(), TokenType.OpenPar));
     } else if (src[0] == ")") {
@@ -137,6 +142,33 @@ export function tokenize(input: string): Token[] {
     } else if (src[0] == ";") {
       tokens.push(toToken(src.shift(), TokenType.EndLine));
     } else {
+      if (src[0] == "\\" && src[1] == '"') {
+        if (isMakingString) {
+          stringMakingProcess += '"';
+          src.shift();
+          src.shift();
+        }
+      }
+
+      if (src[0] == '"') {
+        if (isMakingString) {
+          tokens.push(toToken(stringMakingProcess, TokenType.String));
+        }
+        stringMakingProcess = "";
+
+        isMakingString = !isMakingString;
+
+        src.shift();
+        continue;
+      }
+
+      if (isMakingString) {
+        const val = src.shift();
+
+        stringMakingProcess = `${stringMakingProcess}${val}`;
+        continue;
+      }
+
       if (isInt(src[0])) {
         let num = "";
 
@@ -158,14 +190,9 @@ export function tokenize(input: string): Token[] {
         } else {
           tokens.push(toToken(identifier, TokenType.Identifier));
         }
-      } else if (isEmpty(src[0])) {
-        tokens.push({
-          type: TokenType.Skip,
-          value: "",
-        });
-        src.shift();
       } else {
         console.log("Unknown character: ", src[0]);
+        Deno.exit();
       }
     }
   }

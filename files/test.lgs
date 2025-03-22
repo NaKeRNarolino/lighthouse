@@ -1,1 +1,3 @@
-let variable = 32 * ( 100 / 25 );
+let variable = "Hello, world!";
+
+variable
