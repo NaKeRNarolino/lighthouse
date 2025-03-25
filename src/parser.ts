@@ -1,16 +1,35 @@
 import {
   Program,
-  State,
-  VarDeclaration,
-  Expr,
-  BinExpr,
   Identifier,
   NumericLiteral,
-  VarAssignment,
-  NullExpr,
+  NullExpression,
   StringLiteral,
+  Statement,
+  VariableDeclaration,
+  Expression,
+  BinaryExpression,
+  Operand,
+  VariableAssignment,
 } from "@lhs/ast";
 import { Token, TokenType, tokenize, TokenUtils } from "@lhs/lexer";
+
+const operatorToOperand = (operator: string) => {
+  switch (operator) {
+    case "+":
+      return Operand.Plus;
+    case "-":
+      return Operand.Minus;
+    case "/":
+      return Operand.Division;
+    case "*":
+      return Operand.Multiplication;
+    case "%":
+      return Operand.Modulo;
+    default:
+      console.error("Unknown operator: ", operator);
+      Deno.exit(0);
+  }
+};
 
 export default class Parser {
   private tokens: Token[] = [];
@@ -55,36 +74,31 @@ export default class Parser {
   public produceAST(src: string): Program {
     this.tokens = tokenize(src);
 
-    const program: Program = {
-      kind: "Program",
-      body: [],
-    };
+    const program: Program = new Program([]);
 
     while (this.not_eof()) {
-      program.body.push(this.parseState());
+      program.body.push(this.parseStatement());
     }
 
     return program;
   }
 
-  private parseState(): State {
+  private parseStatement(): Statement {
     switch (this.atToken().type) {
       case TokenType.Keyword: {
         if (this.atToken().value == "let" || this.atToken().value == "const") {
           return this.parseVarDec();
         }
-        return { kind: "NullExpr" } satisfies NullExpr;
+        return new NullExpression();
       }
       case TokenType.EndLine:
-        return {
-          kind: "NullExpr",
-        } satisfies NullExpr;
+        return new NullExpression();
       default:
         return this.parseExpr();
     }
   }
 
-  private parseVarDec(): State {
+  private parseVarDec(): Statement {
     const isConstant = this.eat().value == "const";
     const id = this.expect(
       TokenType.Identifier,
@@ -98,83 +112,63 @@ export default class Parser {
         throw "Must assign a value";
       }
 
-      return {
-        kind: "VarDeclaration",
-        identifier: id,
-        constant: false,
-      } as VarDeclaration;
+      return new VariableDeclaration(isConstant, id);
     }
 
     this.expect(TokenType.Operator, "Expected '=' operator", "=");
 
-    const declaration = {
-      kind: "VarDeclaration",
-      value: this.parseExpr(),
-      identifier: id,
-      constant: isConstant,
-    } as VarDeclaration;
+    const declaration = new VariableDeclaration(
+      isConstant,
+      id,
+      this.parseExpr()
+    );
 
     this.expect(TokenType.EndLine, "Expected a semicolon");
 
     return declaration;
   }
 
-  private parseExpr(): Expr {
+  private parseExpr(): Expression {
     return this.parseAddExpr();
   }
 
-  private parseAddExpr(): Expr {
+  private parseAddExpr(): Expression {
     let left = this.parseMultExpr();
 
     while (this.atToken().value == "+" || this.atToken().value == "-") {
       const operator = this.eat().value;
       const right = this.parseMultExpr();
-      left = {
-        kind: "BinExpr",
-        left,
-        right,
-        operator,
-      } as BinExpr;
+      left = new BinaryExpression(left, right, operatorToOperand(operator));
     }
 
     return left;
   }
 
-  private parseMultExpr(): Expr {
+  private parseMultExpr(): Expression {
     let left = this.parseModExpr();
 
     while (this.atToken().value == "*" || this.atToken().value == "/") {
       const operator = this.eat().value;
       const right = this.parseModExpr();
-      left = {
-        kind: "BinExpr",
-        left,
-        right,
-        operator,
-      } as BinExpr;
+      left = new BinaryExpression(left, right, operatorToOperand(operator));
     }
 
     return left;
   }
 
-  private parseModExpr(): Expr {
+  private parseModExpr(): Expression {
     let left = this.parsePrimExpr();
 
     while (this.atToken().value == "%") {
       const operator = this.eat().value;
       const right = this.parsePrimExpr();
-      left = {
-        kind: "BinExpr",
-        left,
-        right,
-        operator,
-      } as BinExpr;
+      left = new BinaryExpression(left, right, operatorToOperand(operator));
     }
 
     return left;
   }
 
-  private parsePrimExpr(): Expr {
+  private parsePrimExpr(): Expression {
     const token = this.atToken().type;
 
     switch (token) {
@@ -189,18 +183,12 @@ export default class Parser {
           return this.parseVarAssignment(tryGetAssignment[1]!);
         }
 
-        return { kind: "Identifier", symbol: this.eat().value } as Identifier;
+        return new Identifier(this.eat().value);
       }
       case TokenType.Number:
-        return {
-          kind: "NumericLiteral",
-          value: parseFloat(this.eat().value),
-        } as NumericLiteral;
+        return new NumericLiteral(parseFloat(this.eat().value));
       case TokenType.String:
-        return {
-          kind: "StringLiteral",
-          value: this.eat().value,
-        } as StringLiteral;
+        return new StringLiteral(this.eat().value);
       case TokenType.OpenPar: {
         this.eat();
         const value = this.parseExpr();
@@ -211,76 +199,33 @@ export default class Parser {
       default:
         console.error("Unexpected token: ", this.atToken());
         Deno.exit();
-      // return {} as State;
+      // return {} as Statement;
     }
   }
 
-  private parseVarAssignment(mode: string): Expr {
+  private parseVarAssignment(mode: string): Expression {
     const ident = this.eat();
     this.eat(); // `=` | `+=` | `-=` | `/=` | `*=`
 
     const expr = this.parseExpr();
 
-    const v: VarAssignment = {
-      ident: ident.value,
-      value: (() => {
+    const v: VariableAssignment = new VariableAssignment(
+      ident.value,
+      (() => {
         if (mode == "=") {
           return expr;
-        } else if (mode == "+=") {
-          return {
-            kind: "BinExpr",
-            left: {
-              kind: "Identifier",
-              symbol: ident.value,
-            } satisfies Identifier as Expr,
-            right: expr,
-            operator: "+",
-          } satisfies BinExpr;
-        } else if (mode == "-=") {
-          return {
-            kind: "BinExpr",
-            left: {
-              kind: "Identifier",
-              symbol: ident.value,
-            } satisfies Identifier as Expr,
-            right: expr,
-            operator: "-",
-          } satisfies BinExpr;
-        } else if (mode == "/=") {
-          return {
-            kind: "BinExpr",
-            left: {
-              kind: "Identifier",
-              symbol: ident.value,
-            } satisfies Identifier as Expr,
-            right: expr,
-            operator: "/",
-          } satisfies BinExpr;
-        } else if (mode == "*=") {
-          return {
-            kind: "BinExpr",
-            left: {
-              kind: "Identifier",
-              symbol: ident.value,
-            } satisfies Identifier as Expr,
-            right: expr,
-            operator: "*",
-          } satisfies BinExpr;
-        } else if (mode == "%=") {
-          return {
-            kind: "BinExpr",
-            left: {
-              kind: "Identifier",
-              symbol: ident.value,
-            } satisfies Identifier as Expr,
-            right: expr,
-            operator: "%",
-          } satisfies BinExpr;
+        } else {
+          const modeModifier = mode[0];
+          const operand = operatorToOperand(modeModifier);
+
+          return new BinaryExpression(
+            new Identifier(ident.value),
+            expr,
+            operand
+          );
         }
-        return { kind: "NullExpr" } satisfies NullExpr;
-      })(),
-      kind: "VarAssignment",
-    };
+      })()
+    );
 
     this.expect(TokenType.EndLine, "Expected a semicolon");
 

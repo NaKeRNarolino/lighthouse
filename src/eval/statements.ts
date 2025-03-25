@@ -1,4 +1,4 @@
-import { Program, VarAssignment, VarDeclaration } from "@lhs/ast";
+import { Program, VariableAssignment, VariableDeclaration } from "@lhs/ast";
 import Environment from "@lhs/environment";
 import { evaluate } from "@lhs/interpreter";
 import { RuntimeValue } from "@lhs/runtime-values";
@@ -18,20 +18,20 @@ export function evaluateProgram(
 }
 
 export function evaluateVarDec(
-  declaration: VarDeclaration,
+  declaration: VariableDeclaration,
   env: Environment
 ): RuntimeValue<unknown> {
   const value = declaration.value
     ? evaluate(declaration.value, env)
     : ValueMaker.makeNull();
-  return env.varDec(declaration.identifier, value, declaration.constant);
+  return env.varDec(declaration.identifier, value, declaration.isConstant);
 }
 
 export function evaluateVarAssignment(
-  stmt: VarAssignment,
+  stmt: VariableAssignment,
   env: Environment
 ): RuntimeValue<unknown> {
-  env.varAssign(stmt.ident, evaluate(stmt.value, env));
+  env.varAssign(stmt.identifier, evaluate(stmt.value, env));
 
   return ValueMaker.makeNull();
 }

@@ -10,7 +10,7 @@
     "@lhs/parser": "./src/parser.ts",
     "@lhs/eval/expr": "./src/eval/expressions.ts",
     "@lhs/eval/stmt": "./src/eval/statements.ts",
-    "@lhs/ast": "./src/ast.ts",
+    "@lhs/ast": "./src/ast_nodes.ts",
     "@lhs/lexer": "./src/lexer.ts",
     "@lhs/runtime-values": "./src/runtime_value.ts"
   }
