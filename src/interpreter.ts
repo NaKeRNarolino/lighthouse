@@ -4,14 +4,15 @@ import {
   StringRuntimeValue,
 } from "@lhs/runtime-values";
 import {
-  BinExpr,
+  BinaryExpression,
   Identifier,
+  NullExpression,
   NumericLiteral,
   Program,
-  State,
+  Statement,
   StringLiteral,
-  VarAssignment,
-  VarDeclaration,
+  VariableAssignment,
+  VariableDeclaration,
 } from "@lhs/ast";
 import Environment from "@lhs/environment";
 import { evaluateIdentifier, evaluateBinExpr } from "@lhs/eval/expr";
@@ -23,29 +24,27 @@ import {
 import { ValueMaker } from "@lhs/value-maker";
 
 export function evaluate(
-  astNode: State,
+  astNode: Statement,
   env: Environment
 ): RuntimeValue<unknown> {
-  switch (astNode.kind) {
-    case "NumericLiteral":
-      return new NumberRuntimeValue((astNode as NumericLiteral).value);
-    case "StringLiteral":
-      return new StringRuntimeValue((astNode as StringLiteral).value);
-    case "Identifier":
-      return evaluateIdentifier(astNode as Identifier, env);
-    case "BinExpr":
-      return evaluateBinExpr(astNode as BinExpr, env);
-    case "Program":
-      return evaluateProgram(astNode as Program, env);
-    case "VarDeclaration":
-      return evaluateVarDec(astNode as VarDeclaration, env);
-    case "VarAssignment":
-      return evaluateVarAssignment(astNode as VarAssignment, env);
-    case "NullExpr":
-      return ValueMaker.makeNull();
-
-    default:
-      console.error("Hui", astNode);
-      return ValueMaker.makeNull();
+  if (astNode instanceof NumericLiteral) {
+    return new NumberRuntimeValue(astNode.value);
+  } else if (astNode instanceof StringLiteral) {
+    return new StringRuntimeValue(astNode.value);
+  } else if (astNode instanceof Identifier) {
+    return evaluateIdentifier(astNode, env);
+  } else if (astNode instanceof BinaryExpression) {
+    return evaluateBinExpr(astNode, env);
+  } else if (astNode instanceof Program) {
+    return evaluateProgram(astNode, env);
+  } else if (astNode instanceof VariableDeclaration) {
+    return evaluateVarDec(astNode, env);
+  } else if (astNode instanceof VariableAssignment) {
+    return evaluateVarAssignment(astNode, env);
+  } else if (astNode instanceof NullExpression) {
+    return ValueMaker.makeNull();
+  } else {
+    console.error("Unknown AST Node: ", astNode);
+    return ValueMaker.makeNull();
   }
 }

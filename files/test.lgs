@@ -1,2 +1,3 @@
-let variable = "Hello, world!";
-let num = 30;
+let variable = 100;
+
+variable * 2 * 2 / 4
