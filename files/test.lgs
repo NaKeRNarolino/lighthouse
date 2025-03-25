@@ -1,3 +1,2 @@
 let variable = "Hello, world!";
-
-variable
+let num = 30;
