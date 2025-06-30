@@ -4,14 +4,14 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
-    "@lhs/value-maker": "./src/value_maker.ts",
-    "@lhs/environment": "./src/environment.ts",
-    "@lhs/interpreter": "./src/interpreter.ts",
-    "@lhs/parser": "./src/parser.ts",
+    "@lhs/value-maker": "./src/eval/value_maker.ts",
+    "@lhs/environment": "./src/eval/environment.ts",
+    "@lhs/interpreter": "./src/eval/mod.ts",
+    "@lhs/parser": "./src/parse/mod.ts",
     "@lhs/eval/expr": "./src/eval/expressions.ts",
     "@lhs/eval/stmt": "./src/eval/statements.ts",
-    "@lhs/ast": "./src/ast_nodes.ts",
-    "@lhs/lexer": "./src/lexer.ts",
-    "@lhs/runtime-values": "./src/runtime_value.ts"
+    "@lhs/ast": "./src/parse/ast_nodes.ts",
+    "@lhs/lexer": "./src/parse/lexer.ts",
+    "@lhs/runtime-values": "./src/eval/runtime_value.ts"
   }
 }
