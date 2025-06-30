@@ -24,14 +24,21 @@ export function evaluateVarDec(
   const value = declaration.value
     ? evaluate(declaration.value, env)
     : ValueMaker.makeNull();
-  return env.varDec(declaration.identifier, value, declaration.isConstant);
+  return env.declareVariable({
+    name: declaration.identifier, 
+    value: value, 
+    isConstant:declaration.isConstant
+  });
 }
 
 export function evaluateVarAssignment(
   stmt: VariableAssignment,
   env: Environment
 ): RuntimeValue<unknown> {
-  env.varAssign(stmt.identifier, evaluate(stmt.value, env));
+  env.assignVariable({
+    name: stmt.identifier,
+    value: evaluate(stmt.value, env),
+  });
 
   return ValueMaker.makeNull();
 }

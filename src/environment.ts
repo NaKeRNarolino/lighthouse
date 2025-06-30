@@ -1,64 +1,111 @@
 import { RuntimeValue } from "@lhs/runtime-values";
 
+export type VariableAssignmentProperties = {
+  name: string,
+  value: RuntimeValue<unknown>
+}
+
+export type VariableDeclarationProperties = VariableAssignmentProperties & {
+  isConstant: boolean
+}
+
+type Variable = {
+  name: string,
+  value: RuntimeValue<unknown>,
+  // type: string // for the future stuff
+  isConstant: boolean
+}
+
+type ReadVariableMode = "data" | "value";
+
+type ReadVariableReturnType<T extends ReadVariableMode> = 
+  T extends "data" ? Variable :
+  T extends "value" ? RuntimeValue<unknown> :
+  never;
+
+class VariableReadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "VariableNotDefined";
+  }
+}
+
+class VariableWriteError extends Error {
+  constructor(name: string, message: string) {
+    super(`VariableWriteError for variable "${name}": ${message.replaceAll("%s", name)}`);
+    this.name = "VariableWriteError";
+  }
+}
+
 export default class Environment {
   private parent?: Environment;
-  private variables: Map<string, RuntimeValue<unknown>>;
-  private constants: Set<string>;
+  private variables: Map<string, Variable>;
 
   constructor(parentEnv?: Environment) {
     this.parent = parentEnv;
     this.variables = new Map();
-    this.constants = new Set();
   }
 
-  public varDec(
-    varName: string,
-    value: RuntimeValue<unknown>,
-    constant: boolean
+  public declareVariable(
+    props: VariableDeclarationProperties
   ): RuntimeValue<unknown> {
-    if (this.variables.has(varName)) {
-      throw `Variable declaration failed ${varName}. It already exists.`;
+    if (this.variables.has(props.name)) {
+      throw new VariableWriteError(props.name, `Declaration of the variable "%s" failed as it's already declared in the current scope.`);
     }
 
-    this.variables.set(varName, value);
+    this.variables.set(props.name, props);
 
-    if (constant) {
-      this.constants.add(varName);
-    }
-
-    return value;
+    return props.value;
   }
 
-  public varAssign(
-    varName: string,
-    value: RuntimeValue<unknown>
+  public assignVariable(
+    props: VariableAssignmentProperties
   ): RuntimeValue<unknown> {
-    const env = this.resolveVariable(varName);
+    const env = this.searchForVariable(props.name);
+    const variable = this.readVariable(props.name, "data");
 
-    if (env.constants.has(varName)) {
-      throw `Cannot reassign to variable ${varName} as it is constant`;
+    if (
+      variable == undefined || variable.isConstant
+    ) {
+      throw new VariableWriteError(props.name, `Cannot reassign the variable "%s" as it is a constant.`);
     }
 
-    env.variables.set(varName, value);
-    return value;
+    env.variables.set(variable.name, {
+      name: variable.name,
+      value: props.value,
+      isConstant: variable.isConstant
+    });
+
+    return props.value;
   }
 
-  public lookUpVar(varName: string): RuntimeValue<unknown> {
-    const env = this.resolveVariable(varName);
-    return env.variables.get(varName) as RuntimeValue<unknown>;
+  public readVariable<T extends ReadVariableMode>(varName: string, mode: T = "value" as T): ReadVariableReturnType<T> {
+    const env = this.searchForVariable(varName);
+    const variable = env.variables.get(varName);
+
+    if (variable == undefined) {
+      throw new VariableReadError(`Variable "${varName}" is not defined in the current scope.`)
+    }
+
+    if (mode == "value") {
+      return env.variables.get(varName)!.value as ReadVariableReturnType<T>;
+    } else {
+      const env = this.searchForVariable(varName);
+      return env.variables.get(varName) as ReadVariableReturnType<T>;
+    }
   }
 
   /**
    * @throws
    */
-  public resolveVariable(varName: string): Environment {
+  public searchForVariable(varName: string): Environment {
+    console.log(...this.variables)
     if (this.variables.has(varName)) {
       return this;
-    }
-    if (this.parent == undefined) {
+    } else if (this.parent != undefined) {
+      return this.parent.searchForVariable(varName);
+    } else {
       throw `Cannot resolve ${varName}`;
     }
-
-    return this.parent.resolveVariable(varName);
   }
 }

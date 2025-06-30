@@ -51,6 +51,6 @@ export function evaluateIdentifier(
   id: Identifier,
   env: Environment
 ): RuntimeValue<unknown> {
-  const val = env.lookUpVar(id.identifier);
+  const val = env.readVariable(id.identifier);
   return val;
 }
