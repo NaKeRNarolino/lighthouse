@@ -1,17 +1,23 @@
 import {
-  Program,
-  Identifier,
-  NumericLiteral,
-  NullExpression,
-  StringLiteral,
-  Statement,
-  VariableDeclaration,
-  Expression,
   BinaryExpression,
+  Expression,
+  Identifier,
+  NullExpression,
+  NumericLiteral,
   Operand,
+  Program,
+  Statement,
+  StringLiteral,
   VariableAssignment,
+  VariableDeclaration,
 } from "@lhs/ast";
-import { Token, TokenType, tokenize, TokenUtils } from "@lhs/lexer";
+import {
+  Token,
+  tokenize,
+  type TokenType,
+  TokenUtils,
+  TokenValue,
+} from "@lhs/lexer";
 
 const operatorToOperand = (operator: string) => {
   switch (operator) {
@@ -32,33 +38,33 @@ const operatorToOperand = (operator: string) => {
 };
 
 export default class Parser {
-  private tokens: Token[] = [];
+  private tokens: Token<TokenType>[] = [];
 
   private not_eof(): boolean {
-    return this.tokens[0].type != TokenType.EOF;
+    return this.tokens[0].type != "eof";
   }
 
-  private atToken() {
-    return this.tokens[0] as Token;
+  private atToken<T extends TokenType>(): Token<T> {
+    return this.tokens[0] as Token<T>;
   }
 
-  private peek(i: number = 1) {
-    return this.tokens[i];
+  private peek<T extends TokenType>(i: number = 1) {
+    return this.tokens[i] as Token<T>;
   }
 
-  private eat() {
-    const prev = this.tokens.shift() as Token;
+  private eat<T extends TokenType>(): Token<T> {
+    const prev = this.tokens.shift() as Token<T>;
 
     return prev;
   }
 
-  private expect(
-    type: TokenType,
+  private expect<T extends TokenType>(
+    type: T,
     // deno-lint-ignore no-explicit-any
     message: any,
-    value?: number | string | boolean
+    value?: TokenValue<T>,
   ) {
-    const prev = this.tokens.shift() as Token;
+    const prev = this.tokens.shift() as Token<T>;
 
     if (!prev || prev.type != type) {
       if (value && prev.value != value) {
@@ -85,13 +91,13 @@ export default class Parser {
 
   private parseStatement(): Statement {
     switch (this.atToken().type) {
-      case TokenType.Keyword: {
+      case "keyword": {
         if (this.atToken().value == "let" || this.atToken().value == "const") {
           return this.parseVarDec();
         }
         return new NullExpression();
       }
-      case TokenType.EndLine:
+      case "endLine":
         return new NullExpression();
       default:
         return this.parseExpr();
@@ -101,11 +107,11 @@ export default class Parser {
   private parseVarDec(): Statement {
     const isConstant = this.eat().value == "const";
     const id = this.expect(
-      TokenType.Identifier,
-      "Expected an identifier as a name"
+      "identifier",
+      "Expected an identifier as a name",
     ).value;
 
-    if (this.atToken().type == TokenType.EndLine) {
+    if (this.atToken().type == "endLine") {
       this.eat();
 
       if (isConstant) {
@@ -115,15 +121,15 @@ export default class Parser {
       return new VariableDeclaration(isConstant, id);
     }
 
-    this.expect(TokenType.Operator, "Expected '=' operator", "=");
+    this.expect("operator", "Expected '=' operator", "=");
 
     const declaration = new VariableDeclaration(
       isConstant,
       id,
-      this.parseExpr()
+      this.parseExpr(),
     );
 
-    this.expect(TokenType.EndLine, "Expected a semicolon");
+    this.expect("endLine", "Expected a semicolon");
 
     return declaration;
   }
@@ -136,7 +142,7 @@ export default class Parser {
     let left = this.parseMultExpr();
 
     while (this.atToken().value == "+" || this.atToken().value == "-") {
-      const operator = this.eat().value;
+      const operator = this.eat<"operator">().value;
       const right = this.parseMultExpr();
       left = new BinaryExpression(left, right, operatorToOperand(operator));
     }
@@ -148,7 +154,7 @@ export default class Parser {
     let left = this.parseModExpr();
 
     while (this.atToken().value == "*" || this.atToken().value == "/") {
-      const operator = this.eat().value;
+      const operator = this.eat<"operator">().value;
       const right = this.parseModExpr();
       left = new BinaryExpression(left, right, operatorToOperand(operator));
     }
@@ -160,7 +166,7 @@ export default class Parser {
     let left = this.parsePrimExpr();
 
     while (this.atToken().value == "%") {
-      const operator = this.eat().value;
+      const operator = this.eat<"operator">().value;
       const right = this.parsePrimExpr();
       left = new BinaryExpression(left, right, operatorToOperand(operator));
     }
@@ -172,40 +178,40 @@ export default class Parser {
     const token = this.atToken().type;
 
     switch (token) {
-      case TokenType.Identifier: {
+      case "identifier": {
         const tryGetAssignment = TokenUtils.isValueAny(
-          this.peek(),
-          TokenType.Operator,
-          ["=", "+=", "-=", "/=", "*=", "%="]
+          this.peek<"operator">(),
+          "operator",
+          ["=", "+=", "-=", "/=", "*=", "%="],
         );
         // console.log(JSON.stringify(tryGetAssignment));
         if (tryGetAssignment[0]) {
           return this.parseVarAssignment(tryGetAssignment[1]!);
         }
 
-        return new Identifier(this.eat().value);
+        return new Identifier(this.eat<"identifier">().value);
       }
-      case TokenType.Number:
-        return new NumericLiteral(parseFloat(this.eat().value));
-      case TokenType.String:
-        return new StringLiteral(this.eat().value);
-      case TokenType.OpenPar: {
+      case "number":
+        return new NumericLiteral(this.eat<"number">().value);
+      case "string":
+        return new StringLiteral(this.eat<"string">().value);
+      case "openPar": {
         this.eat();
         const value = this.parseExpr();
-        this.expect(TokenType.ClosePar, "')' expected.");
+        this.expect("closePar", "')' expected.");
         return value;
       }
 
       default:
         console.error("Unexpected token: ", this.atToken());
         Deno.exit();
-      // return {} as Statement;
+        // return {} as Statement;
     }
   }
 
   private parseVarAssignment(mode: string): Expression {
-    const ident = this.eat();
-    this.eat(); // `=` | `+=` | `-=` | `/=` | `*=`
+    const ident = this.eat<"identifier">();
+    this.eat<"operator">(); // `=` | `+=` | `-=` | `/=` | `*=`
 
     const expr = this.parseExpr();
 
@@ -221,13 +227,13 @@ export default class Parser {
           return new BinaryExpression(
             new Identifier(ident.value),
             expr,
-            operand
+            operand,
           );
         }
-      })()
+      })(),
     );
 
-    this.expect(TokenType.EndLine, "Expected a semicolon");
+    this.expect("endLine", "Expected a semicolon");
 
     return v;
   }

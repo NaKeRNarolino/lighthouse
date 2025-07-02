@@ -1,52 +1,103 @@
-export enum TokenType {
-  Keyword,
-  String,
-  Identifier,
-  DataTypeDec,
-  DataType,
-  Equals,
-  Number,
-  OpenPar,
-  ClosePar,
-  Operator,
-  EndLine,
-  EOF,
-  Skip,
-}
+const keywordTypes = ["let", "const", "func"] as const;
+export type Keyword = (typeof keywordTypes)[number];
+const operatorTypes = ["+", "-", "/", "*", "%", "="] as const;
+export type Operator = (typeof operatorTypes)[number];
+const composedOperators = [
+  "+=",
+  "-=",
+  "/=",
+  "*=",
+  "%=",
+  "->",
+  ">=",
+  "<=",
+] as const;
+export type ComposedOperator = (typeof composedOperators)[number];
 
-function toKeyword(kw: string): Token {
+// export enum TokenType {
+// Keyword,
+// String,
+// Identifier,
+// DataTypeDec,
+// DataType,
+// Equals,
+// Number,
+// OpenPar,
+// ClosePar,
+// Operator,
+// EndLine,
+// EOF,
+// Skip,
+// }
+
+export type TokenType =
+  | "keyword"
+  | "string"
+  | "identifier"
+  | "datatypeDec"
+  | "datatype"
+  | "equals"
+  | "number"
+  | "openPar"
+  | "closePar"
+  | "operator"
+  | "endLine"
+  | "eof"
+  | "skip";
+
+function toKeyword(kw: Keyword): Token<"keyword"> {
   return {
     value: kw,
-    type: TokenType.Keyword,
+    type: "keyword",
   };
 }
 
-const Keywords: Record<string, Token> = ((keywords: string[]) => {
-  const result: Record<string, Token> = {};
+const Keywords: Record<string, Token<"keyword">> =
+  ((keywords: readonly Keyword[]) => {
+    const result: Record<string, Token<"keyword">> = {};
 
-  for (const kw of keywords) {
-    result[kw] = toKeyword(kw);
-  }
+    for (const kw of keywords) {
+      result[kw] = toKeyword(kw);
+    }
 
-  return result;
-})(["let", "const", "func"]);
+    return result;
+  })(keywordTypes);
 
-export interface Token {
-  value: string;
-  type: TokenType;
-}
+export type TokenValue<T> = T extends "keyword" ? Keyword
+  : T extends "identifier" ? string
+  : T extends "string" ? string
+  : T extends "number" ? number
+  : T extends "datatypeDec" ? string
+  : T extends "datatype" ? string
+  : T extends "equals" ? string
+  : T extends "operator" ? Operator | ComposedOperator
+  : T extends "endLine" ? string
+  : T extends "eof" ? string
+  : T extends "skip" ? string
+  : T extends "openPar" ? string
+  : T extends "closePar" ? string
+  : never;
+
+export type Token<T extends TokenType> = {
+  value: TokenValue<T>;
+  type: T;
+};
 
 export class TokenUtils {
-  static is(token: Token, type: TokenType, value: string): boolean {
+  static is<T extends TokenType>(
+    token: Token<T>,
+    type: T,
+    value: string,
+  ): boolean {
     return token.type == type && token.value == value;
   }
 
-  static isValueAny(
-    token: Token,
-    type: TokenType,
-    values: string[]
-  ): [boolean, string | null] {
-    // console.log(token.value);
+  static isValueAny<T extends TokenType>(
+    token: Token<T>,
+    type: T,
+    values: TokenValue<T>[],
+  ): [boolean, TokenValue<T> | null] {
+    // console.log(.value);
     if (token.type == type) {
       if (values.includes(token.value)) {
         return [true, token.value];
@@ -56,34 +107,38 @@ export class TokenUtils {
   }
 }
 
-const Operators: Record<string, Token> = ((operators: string[]) => {
-  const result: Record<string, Token> = {};
+const Operators: Record<string, Token<"operator">> =
+  ((operators: readonly Operator[]) => {
+    const result: Record<string, Token<"operator">> = {};
 
-  for (const op of operators) {
-    result[op] = toOperator(op);
-  }
+    for (const op of operators) {
+      result[op] = toOperator(op);
+    }
 
-  return result;
-})(["+", "-", "/", "*", "%", "="]);
+    return result;
+  })(operatorTypes);
 
-const ComposedOperators: Record<string, Token> = ((operators: string[]) => {
-  const result: Record<string, Token> = {};
+const ComposedOperators: Record<string, Token<"operator">> =
+  ((operators: readonly ComposedOperator[]) => {
+    const result: Record<string, Token<"operator">> = {};
 
-  for (const op of operators) {
-    result[op] = toOperator(op);
-  }
+    for (const op of operators) {
+      result[op] = toOperator(op);
+    }
 
-  return result;
-})(["+=", "-=", "/=", "*=", "%=", "->", ">=", "<="]);
+    return result;
+  })(composedOperators);
 
-function toOperator(operator: string): Token {
+function toOperator(
+  operator: Operator | ComposedOperator,
+): Token<"operator"> {
   return {
     value: operator,
-    type: TokenType.Operator,
+    type: "operator",
   };
 }
 
-function toToken(value = "", type: TokenType): Token {
+function toToken<T extends TokenType>(value: TokenValue<T>, type: T): Token<T> {
   return { value, type };
 }
 
@@ -102,8 +157,10 @@ function isInt(str: string) {
   return c >= bounds[0] && c <= bounds[1];
 }
 
-export function tokenize(input: string): Token[] {
-  const tokens = new Array<Token>();
+// deno-lint-ignore no-explicit-any
+export function tokenize(input: string): Token<any>[] {
+  // deno-lint-ignore no-explicit-any
+  const tokens = new Array<Token<any>>();
   const src = input.split("");
 
   let isMakingString = false;
@@ -111,20 +168,20 @@ export function tokenize(input: string): Token[] {
 
   while (src.length > 0) {
     if (isEmpty(src[0])) {
-      tokens.push({
-        type: TokenType.Skip,
-        value: "",
-      });
+      tokens.push(toToken(
+        "",
+        "skip" as const,
+      ));
       src.shift();
       continue;
     }
 
     if (src[0] == "(") {
-      tokens.push(toToken(src.shift(), TokenType.OpenPar));
+      tokens.push(toToken(src.shift()!, "openPar" as const));
     } else if (src[0] == ")") {
-      tokens.push(toToken(src.shift(), TokenType.ClosePar));
+      tokens.push(toToken(src.shift()!, "closePar" as const));
     } else if (Operators[src[0]] != undefined) {
-      if (tokens[tokens.length - 1]?.type != TokenType.Skip) {
+      if (tokens[tokens.length - 1]?.type != "skip") {
         const composed = tokens[tokens.length - 1].value + src[0];
 
         if (ComposedOperators[composed] != undefined) {
@@ -136,11 +193,11 @@ export function tokenize(input: string): Token[] {
       }
       tokens.push(Operators[src.shift()!]);
     } else if (src[0] == ":") {
-      tokens.push(toToken(src.shift(), TokenType.DataTypeDec));
+      tokens.push(toToken(src.shift()!, "datatypeDec" as const));
     } else if (src[0] == "=") {
-      tokens.push(toToken(src.shift(), TokenType.Equals));
+      tokens.push(toToken(src.shift()!, "equals" as const));
     } else if (src[0] == ";") {
-      tokens.push(toToken(src.shift(), TokenType.EndLine));
+      tokens.push(toToken(src.shift()!, "endLine" as const));
     } else {
       if (src[0] == "\\" && src[1] == '"') {
         if (isMakingString) {
@@ -152,7 +209,7 @@ export function tokenize(input: string): Token[] {
 
       if (src[0] == '"') {
         if (isMakingString) {
-          tokens.push(toToken(stringMakingProcess, TokenType.String));
+          tokens.push(toToken(stringMakingProcess, "string" as const));
         }
         stringMakingProcess = "";
 
@@ -176,7 +233,7 @@ export function tokenize(input: string): Token[] {
           num += src.shift();
         }
 
-        tokens.push(toToken(num, TokenType.Number));
+        tokens.push(toToken(parseFloat(num), "number" as const));
       } else if (isAlpha(src[0])) {
         let identifier = "";
 
@@ -188,7 +245,7 @@ export function tokenize(input: string): Token[] {
         if (reserved != undefined) {
           tokens.push(reserved);
         } else {
-          tokens.push(toToken(identifier, TokenType.Identifier));
+          tokens.push(toToken(identifier, "identifier" as const));
         }
       } else {
         console.log("Unknown character: ", src[0]);
@@ -197,10 +254,10 @@ export function tokenize(input: string): Token[] {
     }
   }
 
-  tokens.push({ type: TokenType.EOF, value: "EndOfFile" });
+  tokens.push({ type: "eof", value: "EndOfFile" } as Token<"eof">);
 
   // console.log(tokens);
   return tokens.filter((v) => {
-    return v.type != TokenType.Skip;
+    return v.type != "skip";
   });
 }

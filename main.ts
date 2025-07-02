@@ -13,6 +13,7 @@ async function lhs() {
     value: ValueMaker.makeBool(true), 
     isConstant: true
   });
+
   env.declareVariable({
     name: "false", 
     value: ValueMaker.makeBool(false), 
