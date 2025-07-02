@@ -8,11 +8,16 @@ const composedOperators = [
   "/=",
   "*=",
   "%=",
-  "->",
   ">=",
   "<=",
 ] as const;
 export type ComposedOperator = (typeof composedOperators)[number];
+
+const signTypes = ["(", ")"] as const;
+export type Sign = (typeof signTypes)[number];
+
+const composedSignTypes = ["==", "++"] as const;
+export type ComposedSign = (typeof composedSignTypes)[number];
 
 // export enum TokenType {
 // Keyword,
@@ -38,8 +43,7 @@ export type TokenType =
   | "datatype"
   | "equals"
   | "number"
-  | "openPar"
-  | "closePar"
+  | "sign"
   | "operator"
   | "endLine"
   | "eof"
@@ -49,6 +53,13 @@ function toKeyword(kw: Keyword): Token<"keyword"> {
   return {
     value: kw,
     type: "keyword",
+  };
+}
+
+function toSign(sign: Sign | ComposedSign): Token<"sign"> {
+  return {
+    value: sign,
+    type: "sign",
   };
 }
 
@@ -63,6 +74,94 @@ const Keywords: Record<string, Token<"keyword">> =
     return result;
   })(keywordTypes);
 
+const ComposedSigns: Record<ComposedSign, Token<"sign">> =
+  ((signs: readonly ComposedSign[]) => {
+    const result: Record<string, Token<"sign">> = {};
+
+    for (const sign of signs) {
+      result[sign] = toSign(sign);
+    }
+
+    return result as Record<ComposedSign, Token<"sign">>;
+  })(composedSignTypes);
+
+const Signs: Record<Sign, Token<"sign">> = ((signs: readonly Sign[]) => {
+  const result: Record<string, Token<"sign">> = {};
+
+  for (const sign of signs) {
+    result[sign] = toSign(sign);
+  }
+
+  return result as Record<Sign, Token<"sign">>;
+})(signTypes);
+
+const Operators: Record<Operator, Token<"operator">> =
+  ((operators: readonly Operator[]) => {
+    const result: Record<string, Token<"operator">> = {};
+
+    for (const op of operators) {
+      result[op] = toOperator(op);
+    }
+
+    return result as Record<Operator, Token<"operator">>;
+  })(operatorTypes);
+
+const ComposedOperators: Record<ComposedOperator, Token<"operator">> =
+  ((operators: readonly ComposedOperator[]) => {
+    const result: Record<string, Token<"operator">> = {};
+
+    for (const op of operators) {
+      result[op] = toOperator(op);
+    }
+
+    return result as Record<ComposedOperator, Token<"operator">>;
+  })(composedOperators);
+
+type Composable<T extends TokenType, K extends TokenType, V extends TokenType> =
+  {
+    first: Token<T>;
+    second: Token<K>;
+    result: Token<V>;
+  };
+
+const Composables: readonly Composable<TokenType, TokenType, TokenType>[] = [
+  {
+    first: Operators["+"],
+    second: Operators["="],
+    result: ComposedOperators["+="],
+  },
+  {
+    first: Operators["-"],
+    second: Operators["="],
+    result: ComposedOperators["-="],
+  },
+  {
+    first: Operators["*"],
+    second: Operators["="],
+    result: ComposedOperators["*="],
+  },
+  {
+    first: Operators["/"],
+    second: Operators["="],
+    result: ComposedOperators["/="],
+  },
+  {
+    first: Operators["%"],
+    second: Operators["="],
+    result: ComposedOperators["%="],
+  },
+  {
+    first: Operators["="],
+    second: Operators["="],
+    result: ComposedSigns["=="],
+  },
+  {
+    first: Operators["+"],
+    second: Operators["+"],
+    result: ComposedSigns["++"],
+  },
+];
+
 export type TokenValue<T> = T extends "keyword" ? Keyword
   : T extends "identifier" ? string
   : T extends "string" ? string
@@ -74,8 +173,7 @@ export type TokenValue<T> = T extends "keyword" ? Keyword
   : T extends "endLine" ? string
   : T extends "eof" ? string
   : T extends "skip" ? string
-  : T extends "openPar" ? string
-  : T extends "closePar" ? string
+  : T extends "sign" ? Sign | ComposedSign
   : never;
 
 export type Token<T extends TokenType> = {
@@ -107,28 +205,6 @@ export class TokenUtils {
   }
 }
 
-const Operators: Record<string, Token<"operator">> =
-  ((operators: readonly Operator[]) => {
-    const result: Record<string, Token<"operator">> = {};
-
-    for (const op of operators) {
-      result[op] = toOperator(op);
-    }
-
-    return result;
-  })(operatorTypes);
-
-const ComposedOperators: Record<string, Token<"operator">> =
-  ((operators: readonly ComposedOperator[]) => {
-    const result: Record<string, Token<"operator">> = {};
-
-    for (const op of operators) {
-      result[op] = toOperator(op);
-    }
-
-    return result;
-  })(composedOperators);
-
 function toOperator(
   operator: Operator | ComposedOperator,
 ): Token<"operator"> {
@@ -157,14 +233,35 @@ function isInt(str: string) {
   return c >= bounds[0] && c <= bounds[1];
 }
 
-// deno-lint-ignore no-explicit-any
-export function tokenize(input: string): Token<any>[] {
-  // deno-lint-ignore no-explicit-any
-  const tokens = new Array<Token<any>>();
+export function tokenize(input: string): Token<TokenType>[] {
+  const tokens = new Array<Token<TokenType>>();
   const src = input.split("");
 
   let isMakingString = false;
   let stringMakingProcess = "";
+
+  const maybeCompose = <T extends TokenType>(token: Token<T>) => {
+    if (tokens.length > 0 && tokens[tokens.length - 1].type == "skip") {
+      tokens.push(token);
+
+      return;
+    }
+    const last = tokens[tokens.length - 1];
+    for (const composable of Composables) {
+      const satisfiesFirst = composable.first.type == last.type &&
+        last.value == composable.first.value;
+      const satisfiesSecond = composable.second.type == token.type &&
+        token.value == composable.second.value;
+
+      if (satisfiesFirst && satisfiesSecond) {
+        tokens.pop();
+        tokens.push(composable.result);
+
+        return;
+      }
+    }
+    tokens.push(token);
+  };
 
   while (src.length > 0) {
     if (isEmpty(src[0])) {
@@ -177,21 +274,13 @@ export function tokenize(input: string): Token<any>[] {
     }
 
     if (src[0] == "(") {
-      tokens.push(toToken(src.shift()!, "openPar" as const));
+      tokens.push(toToken(src.shift()! as "(", "sign" as const));
     } else if (src[0] == ")") {
-      tokens.push(toToken(src.shift()!, "closePar" as const));
-    } else if (Operators[src[0]] != undefined) {
-      if (tokens[tokens.length - 1]?.type != "skip") {
-        const composed = tokens[tokens.length - 1].value + src[0];
-
-        if (ComposedOperators[composed] != undefined) {
-          tokens.pop();
-          tokens.push(ComposedOperators[composed]);
-          src.shift();
-          continue;
-        }
-      }
-      tokens.push(Operators[src.shift()!]);
+      tokens.push(toToken(src.shift()! as ")", "sign" as const));
+    } else if (Operators[src[0] as keyof typeof Operators] != undefined) {
+      maybeCompose(Operators[src.shift()! as keyof typeof Operators]);
+    } else if (Signs[src[0] as keyof typeof Signs] != undefined) {
+      maybeCompose(Signs[src.shift()! as keyof typeof Signs]);
     } else if (src[0] == ":") {
       tokens.push(toToken(src.shift()!, "datatypeDec" as const));
     } else if (src[0] == "=") {

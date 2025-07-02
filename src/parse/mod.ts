@@ -79,6 +79,7 @@ export default class Parser {
 
   public produceAST(src: string): Program {
     this.tokens = tokenize(src);
+    console.log(this.tokens);
 
     const program: Program = new Program([]);
 
@@ -175,9 +176,9 @@ export default class Parser {
   }
 
   private parsePrimExpr(): Expression {
-    const token = this.atToken().type;
+    const token = this.atToken();
 
-    switch (token) {
+    switch (token.type) {
       case "identifier": {
         const tryGetAssignment = TokenUtils.isValueAny(
           this.peek<"operator">(),
@@ -195,11 +196,14 @@ export default class Parser {
         return new NumericLiteral(this.eat<"number">().value);
       case "string":
         return new StringLiteral(this.eat<"string">().value);
-      case "openPar": {
-        this.eat();
-        const value = this.parseExpr();
-        this.expect("closePar", "')' expected.");
-        return value;
+      case "sign": {
+        if (token.value == "(") {
+          this.eat();
+          const value = this.parseExpr();
+          this.expect("sign", "')' expected.", ")");
+          return value;
+        }
+        break;
       }
 
       default:
