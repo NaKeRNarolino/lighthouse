@@ -3,16 +3,28 @@ import { evaluate } from "@lhs/interpreter";
 import Environment from "@lhs/environment";
 import { ValueMaker } from "@lhs/value-maker";
 
-repl();
+lhs();
 
-async function repl() {
+async function lhs() {
   const parser = new Parser();
   const env = new Environment();
-  env.varDec("true", ValueMaker.makeBool(true), false);
-  env.varDec("false", ValueMaker.makeBool(false), false);
-  env.varDec("null", ValueMaker.makeNull(), false);
+  env.declareVariable({
+    name: "true", 
+    value: ValueMaker.makeBool(true), 
+    isConstant: true
+  });
 
-  console.log("\nLighthouse v0.1\n");
+  env.declareVariable({
+    name: "false", 
+    value: ValueMaker.makeBool(false), 
+    isConstant: true
+  });
+  env.declareVariable({
+    name: "null", 
+    value: ValueMaker.makeNull(), isConstant: true
+  });
+
+  console.log("\nLighthouse v0.1.1\n");
 
   const useConsole = Deno.args[0] == "console";
 
